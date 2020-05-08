@@ -1,0 +1,40 @@
+version: "2"
+services:
+  mongodb:
+    image: "mongo"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME='root'
+      - ME_CONFIG_MONGODB_ADMINPASSWORD='%%&change-this-please'
+    volumes:
+      - "kitcoin_db_volume:/data/db"
+  kitcoin-main:
+    build:
+      context: .
+      dockerfile: ./Backend.Dockerfile
+    image: docker.pkg.github.com/chromezoneeths/kitcoin/kitcoin:edge
+    links:
+      - "mongodb"
+    depends_on:
+      - mongodb
+    env_file: ./kitcoin/oauth.env
+    environment:
+      - DATABASE_ADDRESS=mongodb://mongodb
+      - DATABASE_NAME=kitcoin
+      - DATABASE_USER=root # Unused
+      - DATABASE_PORT=33060 # Unused
+      - DATABASE_PASSWORD=%%&change-this-please # Unused
+      - WAIT_TO_CONNECT=0 # Number of seconds to wait before connecting to db
+      - OAUTH_CALLBACK_URL=http://localhost:8000/oauth
+      - ENABLE_REMOTE=1 # Should be 0 in production unless needed, enables admin endpoints.
+  kitcoin-web:
+    image: "nginx"
+    depends_on:
+      - kitcoin-main
+    ports:
+      - 8000:80
+    volumes:
+      - "./nginx:/etc/nginx/conf.d"
+      - "./dist-frontend:/usr/share/nginx/html"
+
+volumes:
+  kitcoin_db_volume:
